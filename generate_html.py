@@ -1,73 +1,20 @@
 import os
 import re
 
-# Define templates for different content types
-TEMPLATES = {
-    "animation": """
-    <h3 style="text-align: center;"><span style="color: #ff0000;"><strong>
-    {title}
-    <br /></strong></span></h3>
-    <p style="text-align: center;"><img src="{image_url}" alt="{image_alt}" width="500" height="700" /></p>
-    <p style="text-align: center;"><span style="color: #000080;">
-    {image_description}
-    </span></p>
-    <p style="text-align: justify;"><span style="color: #ff0000;"><strong>خلاصه داستان: </strong><span style="color: #000000;">
-    {summary}
-    </span> </span></p>
-    <p>&nbsp;</p>
-    <p style="text-align: center;"><a><img src="images/52/KEY/00-ftp.png" alt="00 ftp" width="130" height="30" /></a></p>
-    """,
-    "series": """
-    <h3 style="text-align: center;"><span style="color: #ff0000;"><strong>
-    {title}
-    <br /></strong></span></h3>
-    <p style="text-align: center;"><img src="{image_url}" alt="{image_alt}" width="500" height="700" /></p>
-    <p style="text-align: center;"><span style="color: #000080;">
-    {image_description}
-    </span></p>
-    <p style="text-align: justify;"><span style="color: #ff0000;"><strong>خلاصه داستان: </strong><span style="color: #000000;">
-    {summary}
-    </span> </span></p>
-    <p>&nbsp;</p>
-    <p style="text-align: center;"><img src="images/52/KEY/00-ftp.png" alt="00 ftp" width="130" height="30" /></p>
-    """,
-    "cinema": """
-    <h3 style="text-align: center;"><span style="color: #ff0000;"><strong>
-    {title}
-    <br /></strong></span></h3>
-    <p style="text-align: center;"><img src="{image_url}" alt="{image_alt}" width="500" height="700" /></p>
-    <p style="text-align: center;"><span style="color: #000080;">
-    {image_description}
-    </span></p>
-    <p style="text-align: justify;"><span style="color: #ff0000;"><strong>خلاصه داستان: </strong><span style="color: #000000;">
-    {summary}
-    </span> </span></p>
-    <p>&nbsp;</p>
-    <p style="text-align: center;"><a href="{video_url}"><img src="images/52/KEY/00-ftp.png" alt="00 ftp" width="130" height="30" /></a></p>
-    """,
-    "documentary": """
-    <p style="text-align: center;"><span style="color: #ff0000;"><strong>
-    {emphasis_text}
-    </strong></span></p>
-    <p style="text-align: center;"><img src="{image_url}" alt="{image_alt}" width="500" height="700" /></p>
-    <p style="text-align: center;"><span style="color: #000080;">
-    {image_description}
-    </span></p>
-    <p style="text-align: justify;"><span style="color: #ff0000;"><strong>خلاصه داستان:</strong></span>
-    {summary}
-    </p>
-    <p>&nbsp;</p>
-    <p style="text-align: center;"><img src="images/52/KEY/00-ftp.png" alt="00 ftp" width="130" height="30" /></p>
-    """
-}
-
-# Map first letters to content types
-CONTENT_TYPE_MAP = {
-    "a": "animation",
-    "s": "series",
-    "c": "cinema",
-    "d": "documentary"
-}
+# Define a unified template that covers common elements from all types
+UNIFIED_TEMPLATE = """
+<p style="text-align: center;"><span style="background-color: #800000; color: #ffffff;">&nbsp; {warning_text} &nbsp; <br /></span></p>
+<p style="text-align: center;"><span style="color: #ff0000;"><strong>{emphasis_text}</strong></span></p>
+<p style="text-align: center;"><img src="{image_url}" alt="{image_alt}" width="500" height="700" /></p>
+<p style="text-align: center;"><span style="color: #000080;">
+{image_description}
+</span></p>
+<hr id="system-readmore" />
+<p style="text-align: justify;"><span style="color: #ff0000;"><strong>خلاصه داستان:&nbsp;</strong></span>{short_summary}</p>
+<p style="text-align: justify;">{long_description}</p>
+<p>&nbsp;</p>
+<p style="text-align: center;">{download_link}</p>
+"""
 
 def sanitize_filename(filename):
     """
@@ -77,28 +24,31 @@ def sanitize_filename(filename):
     sanitized = sanitized.replace(" ", "_")  # Replace spaces with underscores
     return sanitized
 
-def generate_html(content_type, title, summary, image_url, image_alt, image_description, emphasis_text=None, video_url=None, output_dir="output"):
-    # Ensure the output directory exists
-    if content_type not in TEMPLATES:
-        raise ValueError(f"Unsupported content type: {content_type}")
+def generate_html(title, short_summary, image_url, image_alt, image_description, long_description="", warning_text="", emphasis_text="", video_url="", additional_links="", output_dir="output"):
+    # Prepare the download link section
+    if video_url:
+        download_link = f'<a href="{video_url}"><img src="images/52/KEY/00-ftp.png" alt="00 ftp" width="130" height="30" /></a>'
+    else:
+        download_link = '<img src="images/52/KEY/00-ftp.png" alt="00 ftp" width="130" height="30" />'
     
-    # Get the template for the specified content type
-    template = TEMPLATES[content_type]
+    # If additional links are provided (e.g., for Iranian series), append them
+    if additional_links:
+        download_link += f' &nbsp; &nbsp; &nbsp; {additional_links}'
 
-    # Replace placeholders with actual values
-    html_content = template.format(
-        title=title,
-        summary=summary,
+    # Replace placeholders with actual values, handling optional fields
+    html_content = UNIFIED_TEMPLATE.format(
+        warning_text=warning_text or "",  # Optional warning (e.g., for Iranian series)
+        emphasis_text=emphasis_text or "",  # Optional emphasis (e.g., "قسمت آخر اضافه شد" or documentary note)
         image_url=image_url,
         image_alt=image_alt,
         image_description=image_description,
-        emphasis_text=emphasis_text or "",  # Optional emphasis text
-        video_url=video_url or ""
+        short_summary=short_summary,
+        long_description=long_description or "",  # Optional long description (actors, about, etc.)
+        download_link=download_link
     )
 
     # Sanitize the title to create a valid filename
     sanitized_title = sanitize_filename(title)
-    output_dir = os.path.join(output_dir, content_type)
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
@@ -112,39 +62,20 @@ def generate_html(content_type, title, summary, image_url, image_alt, image_desc
 
 def main():
     while True:
-        # Get user inputs
-        print("\nPlease select a content type:")
-        print("a: Animation")
-        print("s: Series")
-        print("c: Cinema")
-        print("d: Documentary")
-        content_type_key = input("Enter the first letter of the content type (or 'q' to quit): ").lower()
-
-        if content_type_key == "q":
-            print("Exiting the program. Goodbye!")
-            break
-
-        if content_type_key not in CONTENT_TYPE_MAP:
-            print("Invalid content type. Please try again.")
-            continue
-
-        content_type = CONTENT_TYPE_MAP[content_type_key]
+        # Get user inputs for the unified model
         title = input("Enter the title: ")
-        summary = input("Enter the summary: ")
+        warning_text = input("Enter the optional warning text (e.g., site access note, press Enter to skip): ")
+        emphasis_text = input("Enter the optional emphasis text (e.g., 'قسمت آخر اضافه شد', press Enter to skip): ")
+        short_summary = input("Enter the short summary (خلاصه داستان کوتاه): ")
         image_url = input("Enter the image URL: ")
         image_alt = input("Enter the image alt text (in English): ")
         image_description = input("Enter the image description (genre, year, etc.): ")
-
-        emphasis_text = None
-        if content_type == "documentary":
-            emphasis_text = input("Enter the optional emphasis text (press Enter to skip): ")
-
-        video_url = None
-        if content_type == "cinema":
-            video_url = input("Enter the video URL (optional): ")
+        long_description = input("Enter the long description (actors, about, etc., press Enter to skip): ")
+        video_url = input("Enter the video URL (for direct link, press Enter to skip): ")
+        additional_links = input("Enter additional links HTML (e.g., '<a href=\"...\"><img ... /></a>', press Enter to skip): ")
 
         # Generate the HTML file
-        generate_html(content_type, title, summary, image_url, image_alt, image_description, emphasis_text, video_url)
+        generate_html(title,warning_text, emphasis_text, short_summary, image_url, image_alt, image_description, long_description, video_url, additional_links)
 
         # Ask if the user wants to continue
         choice = input("\nDo you want to generate another file? (y/n): ").lower()
